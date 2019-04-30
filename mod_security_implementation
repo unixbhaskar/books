@@ -1,0 +1,462 @@
+I am testing it out on Scientific Linux, which is a clone of RHEL and has all the capability that RHEL have.
+
+I have decided not to run the test on Fedora because it is too bleeding edge for this kind of test..although upstream do..
+
+Implementation and Testing of Mod_Security and Mod_Evasive on Apache Web Server
+
+And we will go with basic rules come along with the package.Later we can customize those rules according to our need.
+
+
+
+
+  Step 1:
+  bhaskar@Scientific-Linux_10:36:32_Wed Jan 25:~> sudo yum install mod_security
+  Loaded plugins: refresh-packagekit
+  Setting up Install Process
+  Resolving Dependencies
+  --> Running transaction check
+  ---> Package mod_security.i686 0:2.5.12-2.el6 will be installed
+  --> Finished Dependency Resolution
+
+  Dependencies Resolved
+
+  ================================================================================================================================================================================================================================
+  Package                                                   Arch                                              Version                                                    Repository                                         Size
+  ================================================================================================================================================================================================================================
+  Installing:
+  mod_security                                              i686                                              2.5.12-2.el6                                               epel                                              896 k
+
+  Transaction Summary
+  ================================================================================================================================================================================================================================
+  Install       1 Package(s)
+
+  Total download size: 896 k
+  Installed size: 3.3 M
+  Is this ok [y/N]: y
+  Downloading Packages:
+  mod_security-2.5.12-2.el6.i686.rpm                                                                                                                                                                       | 896 kB     00:02     
+  Running rpm_check_debug
+  Running Transaction Test
+  Transaction Test Succeeded
+  Running Transaction
+    Installing : mod_security-2.5.12-2.el6.i686                                                                                                                                                                               1/1 
+
+  Installed:
+    mod_security.i686 0:2.5.12-2.el6                                                                                                                                                                                              
+
+  Complete!
+
+
+  Step 2:
+
+  Installing mod_evasive:
+
+  bhaskar@Scientific-Linux_10:38:53_Wed Jan 25:~> sudo yum install mod_evasive
+  [sudo] password for bhaskar: 
+  Loaded plugins: refresh-packagekit
+  Setting up Install Process
+  Resolving Dependencies
+  --> Running transaction check
+  ---> Package mod_evasive.i686 0:1.10.1-10.el6 will be installed
+  --> Finished Dependency Resolution
+
+  Dependencies Resolved
+
+  ================================================================================================================================================================================================================================
+  Package                                                  Arch                                              Version                                                     Repository                                         Size
+  ================================================================================================================================================================================================================================
+  Installing:
+  mod_evasive                                              i686                                              1.10.1-10.el6                                               epel                                               24 k
+
+  Transaction Summary
+  ================================================================================================================================================================================================================================
+  Install       1 Package(s)
+
+  Total download size: 24 k
+  Installed size: 49 k
+  Is this ok [y/N]: y
+  Downloading Packages:
+  mod_evasive-1.10.1-10.el6.i686.rpm                                                                                                                                                                       |  24 kB     00:00     
+  Running rpm_check_debug
+  Running Transaction Test
+  Transaction Test Succeeded
+  Running Transaction
+    Installing : mod_evasive-1.10.1-10.el6.i686                                                                                                                                                                               1/1 
+
+  Installed:
+    mod_evasive.i686 0:1.10.1-10.el6                                                                                                                                                                                              
+
+  Complete!
+
+
+  Step 3:
+  Include rule for mod_evasive as per this recomendation:
+  http://aparnam.wordpress.com/2009/08/17/what-is-mod_evasive-and-how-to-install-it-on-server-in-order-to-prevent-ddos-attack/
+
+  Like this :
+  bhaskar@Scientific-Linux_11:04:48_Wed Jan 25:~> sudo vim /etc/httpd/conf/httpd.conf
+  # Mod_evasive implementation
+
+  <IfModule mod_evasive20.c>
+  DOSHashTableSize 3097
+  DOSPageCount 5
+  DOSSiteCount 100
+  DOSPageInterval 2
+  DOSSiteInterval 2
+  DOSBlockingPeriod 10
+  DOSBlockingPeriod 600
+  </IfModule>
+
+
+  Step 4:
+
+  Restart the httpd server 
+
+  bhaskar@Scientific-Linux_11:06:09_Wed Jan 25:~> sudo /sbin/service httpd restart
+  Stopping httpd:                                            [FAILED]
+  Starting httpd:                                            [  OK  ]
+
+  It failed in first occassion because it was not running ...
+
+  Step5:
+
+  To test mod_evasive to work or not ..using this perl script to test
+
+  #!/usr/bin/perl
+
+  # test.pl: small script to test mod_dosevasive's effectiveness
+
+  use IO::Socket;
+  use strict;
+
+  for(0..100) {
+    my($response);
+    my($SOCKET) = new IO::Socket::INET( Proto   => "tcp",
+					PeerAddr=> "test.domain.tld:80");
+    if (! defined $SOCKET) { die $!; }
+    print $SOCKET "GET /?$_ HTTP/1.0\n\n";
+    $response = <$SOCKET>;
+    print $response;
+    close($SOCKET);
+  }
+
+
+  Step 6:
+  So installing mod_security and enable the log file  here ;
+
+  root@Scientific-Linux_11:20:03_Wed Jan 25:/var/log/httpd # ls
+  access_log  error_log  modsec_audit.log  modsec_debug.log
+
+
+  Step 7:
+
+  Mod_security installaton base:
+
+  root@Scientific-Linux_11:21:20_Wed Jan 25:/etc/httpd # cd modsecurity.d/
+
+  root@Scientific-Linux_11:21:24_Wed Jan 25:/etc/httpd/modsecurity.d # ls
+
+  base_rules  modsecurity_crs_10_config.conf  modsecurity_localrules.conf  optional_rules
+
+
+  Step 8:
+  Here is the two module file we have installed
+
+  root@Scientific-Linux_11:24:37_Wed Jan 25:/etc/httpd/conf.d # ls
+
+  mod_evasive.conf  mod_security.conf  README  welcome.conf
+
+  Step 9:
+  Here are the rules files ,which can be adjusted according to our need
+
+  root@Scientific-Linux_11:38:01_Wed Jan 25:/etc/httpd/modsecurity.d/base_rules # ls
+  modsecurity_35_bad_robots.data             modsecurity_46_et_web_rules.data             modsecurity_crs_30_http_policy.conf            modsecurity_crs_41_xss_attacks.conf        modsecurity_crs_49_inbound_blocking.conf
+  modsecurity_35_scanners.data               modsecurity_50_outbound.data                 modsecurity_crs_35_bad_robots.conf             modsecurity_crs_42_tight_security.conf     modsecurity_crs_50_outbound.conf
+  modsecurity_40_generic_attacks.data        modsecurity_50_outbound_malware.data         modsecurity_crs_40_generic_attacks.conf        modsecurity_crs_45_trojans.conf            modsecurity_crs_59_outbound_blocking.conf
+  modsecurity_41_sql_injection_attacks.data  modsecurity_crs_20_protocol_violations.conf  modsecurity_crs_41_phpids_converter.conf       modsecurity_crs_47_common_exceptions.conf  modsecurity_crs_60_correlation.conf
+  modsecurity_42_comment_spam.data           modsecurity_crs_21_protocol_anomalies.conf   modsecurity_crs_41_phpids_filters.conf         modsecurity_crs_48_local_exceptions.conf
+  modsecurity_46_et_sql_injection.data       modsecurity_crs_23_request_limits.conf       modsecurity_crs_41_sql_injection_attacks.conf  modsecurity_crs_49_enforcement.conf
+
+  Step 10:
+  While testing I try to access the etc dir of my local machine by url
+  and I got this on mod_security log
+
+  root@Scientific-Linux_12:13:08_Wed Jan 25:/var/log/httpd # tail -f modsec_audit.log 
+  --e39f1539-H--
+  Message: Pattern match "\/etc\/" at REQUEST_FILENAME. [file "/etc/httpd/modsecurity.d/base_rules/modsecurity_crs_40_generic_attacks.conf"] [line "220"] [id "958700"] [rev "2.0.5"] [msg "Remote File Access Attempt"] [data "/etc/"] [severity "CRITICAL"] [tag "WEB_ATTACK/FILE_INJECTION"] [tag "WASCTC/WASC-33"] [tag "OWASP_TOP_10/A4"] [tag "PCI/6.5.4"]
+  Message: Access denied with code 403 (phase 2). [file "/etc/httpd/modsecurity.d/base_rules/modsecurity_crs_49_enforcement.conf"] [line "25"] [msg "Anomaly Score Exceeded (score 20): Remote File Access Attempt"]
+  Action: Intercepted (phase 2)
+  Stopwatch: 1327473375901826 18282 (16754 17940 -)
+  Producer: ModSecurity for Apache/2.5.12 (http://www.modsecurity.org/); core ruleset/2.0.5.
+  Server: Apache/2.2.15 (Scientific Linux)
+
+  --e39f1539-Z--
+
+  Step 11:
+
+  Another test of it :
+
+  root@Scientific-Linux_12:22:37_Wed Jan 25:/var/log/httpd # curl -i http://Scientific-Linux
+  HTTP/1.1 403 Forbidden
+  Date: Wed, 25 Jan 2012 06:53:16 GMT
+  Server: Apache/2.2.15 (Scientific Linux)
+  Accept-Ranges: bytes
+  Content-Length: 3822
+  Connection: close
+  Content-Type: text/html; charset=UTF-8
+
+  <!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.1//EN" "http://www.w3.org/TR/xhtml11/DTD/xhtml11.dtd">
+
+  <html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en">
+	  <head>
+		  <title>Test Page for the Apache HTTP Server on Scientific Linux</title>
+		  <meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+		  <style type="text/css">
+			  /*<![CDATA[*/
+			  body {
+				  background-color: #fff;
+				  color: #000;
+				  font-size: 0.9em;
+				  font-family: sans-serif,helvetica;
+				  margin: 0;
+				  padding: 0;
+			  }
+			  :link {
+				  color: #c00;
+			  }
+			  :visited {
+				  color: #c00;
+			  }
+			  a:hover {
+				  color: #f50;
+			  }
+			  h1 {
+				  text-align: center;
+				  margin: 0;
+				  padding: 0.6em 2em 0.4em;
+				  background-color: #009;
+				  color: #fff;
+				  font-weight: normal;
+				  font-size: 1.75em;
+				  border-bottom: 2px solid #000;
+			  }
+			  h1 strong {
+				  font-weight: bold;
+			  }
+			  h2 {
+				  font-size: 1.1em;
+				  font-weight: bold;
+			  }
+			  hr {
+				  display: none;
+			  }
+			  .content {
+				  padding: 1em 5em;
+			  }
+			  .content-columns {
+				  /* Setting relative positioning allows for 
+				  absolute positioning for sub-classes */
+				  position: relative;
+				  padding-top: 1em;
+			  }
+			  .content-column-left {
+				  /* Value for IE/Win; will be overwritten for other browsers */
+				  width: 47%;
+				  padding-right: 3%;
+				  float: left;
+				  padding-bottom: 2em;
+			  }
+			  .content-column-left hr {
+				  display: none;
+			  }
+			  .content-column-right {
+				  /* Values for IE/Win; will be overwritten for other browsers */
+				  width: 47%;
+				  padding-left: 3%;
+				  float: left;
+				  padding-bottom: 2em;
+			  }
+			  .content-columns>.content-column-left, .content-columns>.content-column-right {
+				  /* Non-IE/Win */
+			  }
+			  img {
+				  border: 2px solid #fff;
+				  padding: 2px;
+				  margin: 2px;
+			  }
+			  a:hover img {
+				  border: 2px solid #f50;
+			  }
+			  /*]]>*/
+		  </style>
+	  </head>
+
+	  <body>
+		  <h1>Scientific Linux <strong>Test Page</strong></h1>
+
+		  <div class="content">
+			  <div class="content-middle">
+				  <p>This page is used to test the proper operation of the Apache HTTP server after it has been installed. If you can read this page, it means that the Apache HTTP server installed at this site is working properly.</p>
+			  </div>
+			  <hr />
+
+			  <div class="content-columns">
+				  <div class="content-column-left">
+					  <h2>If you are a member of the general public:</h2>
+
+					  <p>The fact that you are seeing this page indicates that the website you just visited is either experiencing problems, or is undergoing routine maintenance.</p>
+
+					  <p>If you would like to let the administrators of this website know that you've seen this page instead of the page you expected, you should send them e-mail. In general, mail sent to the name "webmaster" and directed to the website's domain should reach the appropriate person.</p>
+
+					  <p>For example, if you experienced problems while visiting www.example.com, you should send e-mail to "webmaster@example.com".</p>
+
+					  <p>For information on Scientific Linux, please visit the <a href="http://www.scientificlinux.org/">Scientific Linux website</a>.</p>
+					  <hr />
+				  </div>
+
+				  <div class="content-column-right">
+					  <h2>If you are the website administrator:</h2>
+
+					  <p>You may now add content to the directory <tt>/var/www/html/</tt>. Note that until you do so, people visiting your website will see this page, and not your content. To prevent this page from ever being used, follow the instructions in the file <tt>/etc/httpd/conf.d/welcome.conf</tt>.</p>
+
+					  <p>You are free to use the image below on web sites powered by the Apache HTTP Server:</p>
+
+					  <p align="center"><a href="http://httpd.apache.org/"><img src="/icons/apache_pb2.gif" alt="[ Powered by Apache ]"/></a></p>
+
+				  </div>
+			  </div>
+		  </div>
+	  </body>
+  </html>
+
+
+  Step 12:
+
+  And here is what the rules said :
+
+  root@Scientific-Linux_12:26:13_Wed Jan 25:/var/log/httpd # tail -f modsec_audit.log 
+  --e39f1539-H--
+  Message: Matched phrase "curl" at REQUEST_HEADERS:User-Agent. [file "/etc/httpd/modsecurity.d/base_rules/modsecurity_crs_35_bad_robots.conf"] [line "26"] [id "990012"] [rev "2.0.5"] [msg "Rogue web site crawler"] [data "curl"] [severity "WARNING"] [tag "AUTOMATION/MALICIOUS"] [tag "WASCTC/WASC-21"] [tag "OWASP_TOP_10/A7"] [tag "PCI/6.5.10"]
+  Message: Warning. Operator LT matched 20 at TX:inbound_anomaly_score. [file "/etc/httpd/modsecurity.d/base_rules/modsecurity_crs_60_correlation.conf"] [line "31"] [msg "Inbound Anomaly Score (Total Inbound Score: 10, SQLi=, XSS=): Rogue web site crawler"]
+  Apache-Error: [file "/builddir/build/BUILD/httpd-2.2.15/modules/generators/mod_autoindex.c"] [line 2292] [level 3] Directory index forbidden by Options directive: /var/www/html/
+  Stopwatch: 1327474567095624 3198 (1152 2456 -)
+  Producer: ModSecurity for Apache/2.5.12 (http://www.modsecurity.org/); core ruleset/2.0.5.
+  Server: Apache/2.2.15 (Scientific Linux)
+
+  --e39f1539-Z--
+
+  Step 12:
+
+  Running the script mentioned in Step 5; got me this result:
+
+  Mod_Evasive working:
+
+
+  bhaskar@Scientific-Linux_12:30:31_Wed Jan 25:~> sudo ./test.pl 
+  [sudo] password for bhaskar: 
+  HTTP/1.1 403 Forbidden
+  HTTP/1.1 403 Forbidden
+  HTTP/1.1 403 Forbidden
+  HTTP/1.1 403 Forbidden
+  HTTP/1.1 403 Forbidden
+  HTTP/1.1 403 Forbidden
+  HTTP/1.1 403 Forbidden
+  HTTP/1.1 403 Forbidden
+  HTTP/1.1 403 Forbidden
+  HTTP/1.1 403 Forbidden
+  HTTP/1.1 403 Forbidden
+  HTTP/1.1 403 Forbidden
+  HTTP/1.1 403 Forbidden
+  HTTP/1.1 403 Forbidden
+  HTTP/1.1 403 Forbidden
+  HTTP/1.1 403 Forbidden
+  HTTP/1.1 403 Forbidden
+  HTTP/1.1 403 Forbidden
+  HTTP/1.1 403 Forbidden
+  HTTP/1.1 403 Forbidden
+  HTTP/1.1 403 Forbidden
+  HTTP/1.1 403 Forbidden
+  HTTP/1.1 403 Forbidden
+  HTTP/1.1 403 Forbidden
+  HTTP/1.1 403 Forbidden
+  HTTP/1.1 403 Forbidden
+  HTTP/1.1 403 Forbidden
+  HTTP/1.1 403 Forbidden
+  HTTP/1.1 403 Forbidden
+  HTTP/1.1 403 Forbidden
+  HTTP/1.1 403 Forbidden
+  HTTP/1.1 403 Forbidden
+  HTTP/1.1 403 Forbidden
+  HTTP/1.1 403 Forbidden
+  HTTP/1.1 403 Forbidden
+  HTTP/1.1 403 Forbidden
+  HTTP/1.1 403 Forbidden
+  HTTP/1.1 403 Forbidden
+  HTTP/1.1 403 Forbidden
+  HTTP/1.1 403 Forbidden
+  HTTP/1.1 403 Forbidden
+  HTTP/1.1 403 Forbidden
+  HTTP/1.1 403 Forbidden
+  HTTP/1.1 403 Forbidden
+  HTTP/1.1 403 Forbidden
+  HTTP/1.1 403 Forbidden
+  HTTP/1.1 403 Forbidden
+  HTTP/1.1 403 Forbidden
+  HTTP/1.1 403 Forbidden
+  HTTP/1.1 403 Forbidden
+  HTTP/1.1 403 Forbidden
+  HTTP/1.1 403 Forbidden
+  HTTP/1.1 403 Forbidden
+  HTTP/1.1 403 Forbidden
+  HTTP/1.1 403 Forbidden
+  HTTP/1.1 403 Forbidden
+  HTTP/1.1 403 Forbidden
+  HTTP/1.1 403 Forbidden
+  HTTP/1.1 403 Forbidden
+  HTTP/1.1 403 Forbidden
+  HTTP/1.1 403 Forbidden
+  HTTP/1.1 403 Forbidden
+  HTTP/1.1 403 Forbidden
+  HTTP/1.1 403 Forbidden
+  HTTP/1.1 403 Forbidden
+  HTTP/1.1 403 Forbidden
+  HTTP/1.1 403 Forbidden
+  HTTP/1.1 403 Forbidden
+  HTTP/1.1 403 Forbidden
+  HTTP/1.1 403 Forbidden
+  HTTP/1.1 403 Forbidden
+  HTTP/1.1 403 Forbidden
+  HTTP/1.1 403 Forbidden
+  HTTP/1.1 403 Forbidden
+  HTTP/1.1 403 Forbidden
+  HTTP/1.1 403 Forbidden
+  HTTP/1.1 403 Forbidden
+  HTTP/1.1 403 Forbidden
+  HTTP/1.1 403 Forbidden
+  HTTP/1.1 403 Forbidden
+  HTTP/1.1 403 Forbidden
+  HTTP/1.1 403 Forbidden
+  HTTP/1.1 403 Forbidden
+  HTTP/1.1 403 Forbidden
+  HTTP/1.1 403 Forbidden
+  HTTP/1.1 403 Forbidden
+  HTTP/1.1 403 Forbidden
+  HTTP/1.1 403 Forbidden
+  HTTP/1.1 403 Forbidden
+  HTTP/1.1 403 Forbidden
+  HTTP/1.1 403 Forbidden
+  HTTP/1.1 403 Forbidden
+  HTTP/1.1 403 Forbidden
+  HTTP/1.1 403 Forbidden
+  HTTP/1.1 403 Forbidden
+  HTTP/1.1 403 Forbidden
+  HTTP/1.1 403 Forbidden
+  HTTP/1.1 403 Forbidden
+  HTTP/1.1 403 Forbidden
+  HTTP/1.1 403 Forbidden
+  HTTP/1.1 403 Forbidden
+
+
+
+
+
